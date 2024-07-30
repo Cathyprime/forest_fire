@@ -1,0 +1,7 @@
+[package]
+name = "forest_fire"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+drawing-rs = { git = "https://github.com/Cathyprime/drawing-rs", version = "0.1.0" }
