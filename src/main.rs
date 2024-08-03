@@ -1,66 +1,77 @@
-use std::str::FromStr;
+mod types;
 
-use drawing_rs::{
-	color::Rgba,
-	frame::{self, Frame, FrameBuilder},
-	pixels::SurfaceTexture,
-	winit::{
-		event::{Event, WindowEvent},
-		event_loop::ControlFlow,
-	},
-};
+use raylib::color::Color;
+use raylib::prelude::*;
+use raylib::texture::Image;
 
-fn draw(frame: &mut Frame, index: usize)
-{
-	frame.set_by_index(
-		index + (frame.width() * index as u32) as usize,
-		Rgba::from_str("#ff0000").unwrap(),
-	);
-}
+use types::forest;
+use types::tree;
+use types::tree_builder;
+
+use std::time;
+
+use rand::{thread_rng as rng, Rng};
+
+const WIDTH: i32 = 800;
+const HEIGHT: i32 = 600;
 
 fn main()
 {
-	let event_loop = frame::default_event_loop();
-	let window = frame::default_window(800, 600, "Hello, World", &event_loop);
-	let surface = SurfaceTexture::new(
-		window.inner_size().width,
-		window.inner_size().width,
-		&window,
-	);
+	let (mut rl, thread) = raylib::init().size(WIDTH, HEIGHT).title("Arson").build();
 
-	let mut frame = match FrameBuilder::new(800, 600)
-		.with_event_loop(&event_loop)
-		.with_surface(surface)
-		.with_background(Rgba::from_str("#fff").unwrap())
-		.build()
-	{
-		Ok(v) => v,
-		Err(e) => panic!("{}", e),
-	};
+	rl.set_target_fps(144);
 
-	let mut index: usize = 0;
+	let mut forest = forest::Forest::new(WIDTH, HEIGHT);
 
-	event_loop.run(move |event, _, control_flow| {
-		*control_flow = ControlFlow::Poll;
+	for index in 0..WIDTH * HEIGHT {
+		let x = index % WIDTH;
+		let y = index / WIDTH;
 
-		match event {
-			Event::WindowEvent { event: e, .. } => match e {
-				WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-				WindowEvent::Resized(new_size) => frame
-					.resize_surface(new_size.width, new_size.height)
-					.unwrap(),
-				_ => {}
-			},
-			Event::RedrawRequested(_) => {
-				draw(&mut frame, index);
-				index += 1;
-				if frame.render().is_err() {
-					*control_flow = ControlFlow::Exit;
-				}
-			}
-			_ => {}
-		};
+		forest += tree_builder::TreeBuilder::new()
+			.with_position(x, y)
+			.with_state(tree::TreeState::Alive)
+			.with_age(rng().gen_range(0..3))
+			.build()
+	}
 
-		window.request_redraw();
-	});
+	let mut forest_image = Image::gen_image_color(WIDTH, HEIGHT, Color::WHITE);
+	let mut texture = rl
+		.load_texture_from_image(&thread, &forest_image)
+		.expect("Failed to create texture from image");
+
+	let mut time_keeper = time::Duration::from_secs(9);
+	while !rl.window_should_close() {
+		let now = time::Instant::now();
+		forest.update();
+
+		time_keeper += now.elapsed();
+
+		if time_keeper.ge(&time::Duration::from_secs(10)) {
+			time_keeper = time::Duration::ZERO;
+			forest.ignite_random_tree();
+		}
+
+		let pixels = forest.draw();
+
+		let screen_width = rl.get_screen_width();
+		let screen_height = rl.get_screen_height();
+
+		let scale_x = screen_width as f32 / WIDTH as f32;
+		let scale_y = screen_height as f32 / HEIGHT as f32;
+
+		forest_image.resize(screen_width, screen_height);
+
+		texture.update_texture(&pixels);
+
+		let mut d = rl.begin_drawing(&thread);
+		d.clear_background(Color::WHITE);
+		d.draw_texture_ex(
+			&texture,
+			Vector2::new(0.0, 0.0),
+			0.0,
+			scale_x.min(scale_y),
+			Color::WHITE,
+		);
+		d.draw_fps(0, 0);
+	}
 }

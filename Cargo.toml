@@ -3,5 +3,9 @@ name = "forest_fire"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = 3
+
 [dependencies]
-drawing-rs = { git = "https://github.com/Cathyprime/drawing-rs", version = "0.1.0" }
+rand = "0.8.5"
+raylib = { version = "5.0.1", features = ["wayland"] }
