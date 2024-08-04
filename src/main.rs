@@ -14,6 +14,7 @@ use rand::{thread_rng as rng, Rng};
 
 const WIDTH: i32 = 800;
 const HEIGHT: i32 = 600;
+const TREE_CHANACE: i32 = 80;
 
 fn main()
 {
@@ -29,8 +30,12 @@ fn main()
 
 		forest += tree_builder::TreeBuilder::new()
 			.with_position(x, y)
-			.with_state(tree::TreeState::Alive)
-			.with_age(rng().gen_range(0..3))
+			.with_state(if rng().gen_range(0..100) > TREE_CHANACE {
+				tree::TreeState::None
+			} else {
+				tree::TreeState::Alive
+			})
+			.with_age(rng().gen_range(0..40_000))
 			.build()
 	}
 
@@ -39,14 +44,14 @@ fn main()
 		.load_texture_from_image(&thread, &forest_image)
 		.expect("Failed to create texture from image");
 
-	let mut time_keeper = time::Duration::from_secs(9);
+	let mut time_keeper = time::Duration::from_secs(4);
 	while !rl.window_should_close() {
 		let now = time::Instant::now();
 		forest.update();
 
 		time_keeper += now.elapsed();
 
-		if time_keeper.ge(&time::Duration::from_secs(10)) {
+		if time_keeper.ge(&time::Duration::from_secs(5)) {
 			time_keeper = time::Duration::ZERO;
 			forest.ignite_random_tree();
 		}
