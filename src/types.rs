@@ -24,18 +24,17 @@ pub(crate) mod tree
 
 	const MAGIC_NUMBER: i32 = 10_000;
 
-	#[derive(Clone, Copy, Default, Debug, Eq, PartialEq)]
+	#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 	pub(crate) enum TreeState
 	{
 		Alive,
 		Burning(i32),
 		Dead(i32),
 		Lightning(i32),
-		#[default]
-		None,
+		Empty(i32),
 	}
 
-	#[derive(Clone, Copy, Default, Debug)]
+	#[derive(Clone, Copy, Debug)]
 	pub(crate) struct Tree
 	{
 		pub(crate) age: i32,
@@ -52,7 +51,7 @@ pub(crate) mod tree
 				0 => TreeState::Alive,
 				1 => TreeState::Burning(0),
 				2 => TreeState::Dead(0),
-				3 => TreeState::None,
+				3 => TreeState::Empty(0),
 				_ => panic!(),
 			}
 		}
@@ -65,7 +64,7 @@ pub(crate) mod tree
 			Tree {
 				age: 0,
 				position: Position::new(0, 0),
-				state: TreeState::None,
+				state: TreeState::Empty(0),
 			}
 		}
 
@@ -85,7 +84,7 @@ pub(crate) mod tree
 				},
 				TreeState::Burning(_) => Color::new(180, 120, 70, 255),
 				TreeState::Dead(_) => Color::new(40, 40, 35, 255),
-				TreeState::None => Color::new(15, 30, 15, 255),
+				TreeState::Empty(_) => Color::new(15, 30, 15, 255),
 				TreeState::Lightning(_) => Color::BLUE,
 			}
 		}
@@ -108,16 +107,16 @@ pub(crate) mod tree
 					}
 				}
 				TreeState::Dead(d) => {
-					if rng().gen_range(0..10000) < 5 {
-						self.state = TreeState::None;
+					if rng().gen_range(0..1000000) < 5 {
+						self.state = TreeState::Empty(0);
 						return self;
 					}
 					if *d > 500 {
 						let rng = rng().gen::<f64>();
 						let age: f64 = self.age.into();
-						let regrowth_change = (age / 100f64).ln();
+						let regrowth_chance = 5f64 / age;
 
-						if rng > regrowth_change {
+						if rng > regrowth_chance {
 							self.state = TreeState::Alive;
 							self.age = 0;
 						}
@@ -153,9 +152,11 @@ pub(crate) mod tree
 					}
 					self.age += 1
 				}
-				TreeState::None => {
-					if rng().gen_range(0..10000) < 5 {
+				TreeState::Empty(x) => {
+					if *x > 10_000 && rng().gen_range(0..10000) < 5 {
 						self.state = TreeState::Alive;
+					} else {
+						*x += 1
 					}
 				}
 			}
@@ -184,7 +185,7 @@ pub(crate) mod tree_builder
 			TreeBuilder {
 				age: 0,
 				position: Position::new(0, 0),
-				state: TreeState::None,
+				state: TreeState::Empty(0),
 			}
 		}
 

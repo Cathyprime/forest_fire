@@ -31,7 +31,7 @@ fn main()
 		forest += tree_builder::TreeBuilder::new()
 			.with_position(x, y)
 			.with_state(if rng().gen_range(0..100) > TREE_CHANACE {
-				tree::TreeState::None
+				tree::TreeState::Empty(0)
 			} else {
 				tree::TreeState::Alive
 			})
