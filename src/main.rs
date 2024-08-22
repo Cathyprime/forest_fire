@@ -23,7 +23,6 @@ fn main()
 	rl.set_target_fps(144);
 
 	let mut forest = forest::Forest::new(WIDTH, HEIGHT);
-
 	for index in 0..WIDTH * HEIGHT {
 		let x = index % WIDTH;
 		let y = index / WIDTH;
@@ -39,6 +38,7 @@ fn main()
 			.build()
 	}
 
+	let mut buffer = forest.clone();
 	let mut forest_image = Image::gen_image_color(WIDTH, HEIGHT, Color::WHITE);
 	let mut texture = rl
 		.load_texture_from_image(&thread, &forest_image)
@@ -47,13 +47,14 @@ fn main()
 	let mut time_keeper = time::Duration::from_secs(4);
 	while !rl.window_should_close() {
 		let now = time::Instant::now();
-		forest.update();
+		forest::update(&mut forest, &mut buffer);
+		std::mem::swap(&mut forest, &mut buffer);
 
 		time_keeper += now.elapsed();
 
 		if time_keeper.ge(&time::Duration::from_secs(5)) {
 			time_keeper = time::Duration::ZERO;
-			forest.ignite_random_tree();
+			forest::ignite_random_tree(&mut forest);
 		}
 
 		let pixels = forest.draw();

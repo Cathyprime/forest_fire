@@ -228,11 +228,10 @@ pub(crate) mod forest
 	use rand::seq::SliceRandom;
 	use rand::thread_rng as rng;
 
+	#[derive(Clone, Debug)]
 	pub(crate) struct Forest
 	{
-		ping_pong: bool,
-		trees_one: Vec<tree::Tree>,
-		trees_two: Vec<tree::Tree>,
+		trees: Vec<tree::Tree>,
 		pub(crate) width: i32,
 		pub(crate) height: i32,
 	}
@@ -289,51 +288,9 @@ pub(crate) mod forest
 		pub(crate) fn new(width: i32, height: i32) -> Self
 		{
 			Forest {
-				ping_pong: false,
-				trees_one: Vec::with_capacity((width * height) as usize),
-				trees_two: Vec::with_capacity((width * height) as usize),
+				trees: Vec::with_capacity((width * height) as usize),
 				width,
 				height,
-			}
-		}
-
-		pub(crate) fn trees_and_buffer(&mut self) -> (&[tree::Tree], &mut [tree::Tree])
-		{
-			if !self.ping_pong {
-				(&self.trees_one, &mut self.trees_two)
-			} else {
-				(&self.trees_two, &mut self.trees_one)
-			}
-		}
-
-		pub(crate) fn trees_mut(&mut self) -> &mut [tree::Tree]
-		{
-			if !self.ping_pong {
-				&mut self.trees_one
-			} else {
-				&mut self.trees_two
-			}
-		}
-
-		pub(crate) fn add_tree(&mut self, tree: tree::Tree)
-		{
-			self.trees_one.push(tree);
-			self.trees_two.push(tree);
-		}
-
-		pub(crate) fn ignite_random_tree(&mut self)
-		{
-			let mut binding = self
-				.trees_mut()
-				.iter_mut()
-				.filter(|t| matches!(t.state, tree::TreeState::Alive))
-				.collect::<Vec<_>>();
-
-			let tree = binding.choose_mut(&mut rng());
-
-			match tree {
-				Some(t) => t.state = TreeState::Lightning(0),
-				None => todo!(),
 			}
 		}
 
@@ -341,7 +298,7 @@ pub(crate) mod forest
 		{
 			let mut colors: Vec<u8> = vec![0; (self.width * self.height * 4) as usize];
 
-			for tree in &self.trees_one {
+			for tree in &self.trees {
 				let color = tree.draw();
 				let index = (tree.position.y * self.width + tree.position.x) as usize * 4;
 				if index + 3 < colors.len() {
@@ -354,16 +311,30 @@ pub(crate) mod forest
 
 			colors.into_boxed_slice()
 		}
+	}
 
-		pub(crate) fn update(&mut self)
-		{
-			let width = self.width as usize;
-			let (trees, buffer) = self.trees_and_buffer();
-			for (idx, tree) in trees.iter().enumerate() {
-				let updated_tree = tree.update(neighboring_trees(trees, idx, width).as_slice());
-				buffer[idx] = updated_tree;
-			}
-			self.ping_pong = !self.ping_pong
+	pub(crate) fn ignite_random_tree(forest: &mut Forest)
+	{
+		let mut binding = forest
+			.trees
+			.iter_mut()
+			.filter(|t| matches!(t.state, tree::TreeState::Alive))
+			.collect::<Vec<_>>();
+
+		let tree = binding.choose_mut(&mut rng());
+
+		match tree {
+			Some(t) => t.state = TreeState::Lightning(0),
+			None => todo!(),
+		}
+	}
+
+	pub(crate) fn update(forest: &mut Forest, buffer: &mut Forest)
+	{
+		let width = forest.width as usize;
+		for (idx, tree) in forest.trees.clone().iter().enumerate() {
+			let updated_tree = tree.update(neighboring_trees(&forest.trees, idx, width).as_slice());
+			buffer.trees[idx] = updated_tree;
 		}
 	}
 
@@ -372,7 +343,7 @@ pub(crate) mod forest
 		#[inline(always)]
 		fn add_assign(&mut self, rhs: tree::Tree)
 		{
-			self.add_tree(rhs);
+			self.trees.push(rhs);
 		}
 	}
 }
